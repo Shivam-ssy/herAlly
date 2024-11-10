@@ -6,4 +6,7 @@ Due to all this again a women may feel unsafe to reports the incidents.
 Our platform act as a mediator that is hiding personal details of victim until he manually choose to reveal it to NGOs .
 Our platform also ensure No additional information of user goes to Ngos until user give it manually.
 Victim communicate with NGOs anonymously , seeks kinds of help like online counselling and legal help.
-Due to this platform women can reports their incidents without any fear of indentity reveal.
+Due to this platform women can reports their incidents without any fear of indentity reveal.<br>
+<img>
+![landing page](https://github.com/user-attachments/assets/280acc3a-20d5-4ed8-93e9-4034c66e9bfa)
+
