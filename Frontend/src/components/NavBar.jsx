@@ -1,11 +1,25 @@
 import { NavLink, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-
+import config from "../Conf/cofig";
 function NavBar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false); // Initially set to false for mobile menu
-  const [isLogin, setIsLogin] = useState(false);
-
+  const [isLogin, setIsLogin] = useState(true);
+  useEffect(() => {
+    const fetchUser = async () => {
+      const userData = await fetch(config.getCurrentUser, {
+        method: "GET",
+        credentials: "include",
+      }).then((res) => res.json());
+      console.log(userData);
+      
+      if (userData.statusCode === 200) {
+        setIsLogin(false)
+      
+      }
+    };
+    fetchUser();
+  }, []);
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 50) {
