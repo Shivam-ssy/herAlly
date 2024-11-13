@@ -35,6 +35,9 @@ const NgoUser =new mongoose.Schema(
             
             lowercase: true ,
         },
+        details:{
+            type : String, 
+        },
         district:
         {
             type : String, 
@@ -50,12 +53,15 @@ const NgoUser =new mongoose.Schema(
         },
         password:{
             type:String, 
-            
+            required:true
         },
         refreshToken: {
             type: String
         },
     },
+    {
+        timestamps: true 
+    }
     
 )
 
@@ -83,7 +89,7 @@ NgoUser.methods.generateAccessToken = function(){
         }
     )
 }
-User.methods.generateRefreshToken = function(){
+NgoUser.methods.generateRefreshToken = function(){
     return jwt.sign(
         {
             _id: this._id,

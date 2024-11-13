@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, useContext } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
@@ -16,6 +16,11 @@ import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import NgoList from './pages/NgoList.jsx';
 import ChatScreen from './pages/ChatScreen.jsx';
+import Chat from './pages/demo.jsx';
+import ShowContextProvider from './context/ContextProvider.jsx';
+import ShowContext from './context/ShowContext.js';
+import NgoHome from './pages/NgoHome.jsx';
+
 
   const router=createBrowserRouter(createRoutesFromElements(
     <Route path='/' element={<App/>}>
@@ -26,12 +31,14 @@ import ChatScreen from './pages/ChatScreen.jsx';
       <Route path='/login' element={<Login/>}/>
       <Route path='/register' element={<Register/>}/>
       <Route path='/ngolist' element={<NgoList/>}/>
-      <Route path='/chatscreen' element={<ChatScreen/>}/>
+      <Route path='/chatscreen/:senderId/:recieverId' element={<ChatScreen/>}/>
+      <Route path='/demoChat' element={<Chat/>}/>
+      <Route path='/Ngohome' element={<NgoHome/>}/>
     </Route>
   ))
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-   <RouterProvider router={router}/>
-  </StrictMode>,
+  <ShowContextProvider>
+    <RouterProvider router={router}/>
+  </ShowContextProvider>
 )

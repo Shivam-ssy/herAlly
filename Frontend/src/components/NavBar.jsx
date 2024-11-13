@@ -1,25 +1,40 @@
-import { NavLink, Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { NavLink, Link, useLocation } from "react-router-dom";
+import { useState, useEffect, useContext } from "react";
 import config from "../Conf/cofig";
+import ShowContext from "../context/ShowContext";
 function NavBar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false); // Initially set to false for mobile menu
   const [isLogin, setIsLogin] = useState(true);
+  const {userData}=useContext(ShowContext)
+  // if(userData){
+  //   setIsLogin(true)
+  // }
+  // else{
+  //   false
+  // }
+  const location=useLocation()
   useEffect(() => {
-    const fetchUser = async () => {
-      const userData = await fetch(config.getCurrentUser, {
-        method: "GET",
-        credentials: "include",
-      }).then((res) => res.json());
-      console.log(userData);
+    // const fetchUser = async () => {
+    //   const userData = await fetch(config.getCurrentUser, {
+    //     method: "GET",
+    //     credentials: "include",
+    //   }).then((res) => res.json());
+    //   console.log(userData);
       
-      if (userData.statusCode === 200) {
-        setIsLogin(false)
+    //   if (userData.statusCode === 200) {
+    //     setIsLogin(false)
       
+    //   }
+    // };
+    // fetchUser();
+    if(userData){
+      setIsLogin(false)
+    }
+    else{
+        setIsLogin(true)
       }
-    };
-    fetchUser();
-  }, []);
+  }, [userData,location]);
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 50) {
@@ -36,6 +51,26 @@ function NavBar() {
     };
   }, []);
 
+
+  const logout= async ()=>{
+    try {
+      
+      const response=await  fetch(config.logout,{method:"POST",credentials: 'include'}).then((res)=>res.json())
+      .finally((res)=>console.log(res)
+      )
+      console.log("response at profile",response);
+      
+      if(response.statusCode===200){
+        window.location.href="/"
+      }
+      // else{
+      //   toast.error("something")
+      // }
+    } catch (error) {
+      console.log("error at profile ",error);
+      
+    }
+  }
   return (
     <>
       <main
@@ -107,6 +142,10 @@ function NavBar() {
                 </Link>
               </div>
               }
+              {
+            !isLogin &&  
+            <button onClick={logout} className="px-5 block  md:hidden py-3 bg-red-500 rounded-3xl">Log Out</button>
+          }
               <div className="relative group"></div>
             </ul>
           </div>
@@ -120,6 +159,10 @@ function NavBar() {
               Login
             </Link>
           </div>
+          }
+          {
+            !isLogin &&  
+            <button onClick={logout} className="px-5 md:block  hidden py-3 bg-red-500 rounded-3xl">Log Out</button>
           }
           <div className="block md:hidden">
             <div onClick={() => setIsOpen(!isOpen)}>
