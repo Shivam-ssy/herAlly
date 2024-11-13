@@ -1,0 +1,16 @@
+
+.service-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-top: 20px;
+}
+.service-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+.service-item {
+    margin-bottom: 15px;
+}
+.service-description {
+    margin-left: 20px;
+}

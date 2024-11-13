@@ -16,6 +16,9 @@ const ShowContextProvider = ({children}) => {
         credentials: "include",
       }).then((res) => res.json());      
       setUserData(user.data)
+      if(userData?.email){
+        setStyleChange(false)
+      }
       const ngoData = await fetch(config.getNgoList, {
         method: "GET",
       }).then((res) => res.json());
@@ -31,6 +34,7 @@ const ShowContextProvider = ({children}) => {
       }).then((res) => res.json());
       setConnectedUser(ngoData.data)
     };
+    
     fetchUser();
   }, [location]);  
     return(

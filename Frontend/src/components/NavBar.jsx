@@ -6,7 +6,7 @@ function NavBar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false); // Initially set to false for mobile menu
   const [isLogin, setIsLogin] = useState(true);
-  const {userData}=useContext(ShowContext)
+  const {userData,stylesChange}=useContext(ShowContext)
   // if(userData){
   //   setIsLogin(true)
   // }
@@ -96,7 +96,7 @@ function NavBar() {
           >
             <ul className="flex flex-col font-bold md:flex-row px-5 py-5 gap-5">
               <NavLink
-                to="/"
+                to={userData?!userData?.email?"/ngolist":"/ngohome":"/"}
                 className={({ isActive }) =>
                   isActive ? `text-yellow-500` : `hover:text-yellow-500`
                 }
