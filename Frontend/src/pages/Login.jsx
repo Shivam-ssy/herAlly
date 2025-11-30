@@ -1,190 +1,145 @@
 import { useContext, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ToastContainer } from "react-toastify";
-import { toast } from "react-toastify";
+import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import config from "../Conf/cofig";
 import ShowContext from "../context/ShowContext";
+import ApiService from "../services/apiServices";
+
 function Login() {
-  const { stylesChange, setStyleChange } = useContext(ShowContext);
-  const { loader, setloader } = useContext(ShowContext);
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const { setUser, setLoader } = useContext(ShowContext);
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+
+  // Validate form
+  const validateForm = () => {
+    if (!identifier.trim()) {
+      toast.error("Phone or Email is required");
+      return false;
+    }
+    if (!password.trim()) {
+      toast.error("Password is required");
+      return false;
+    }
+    return true;
+  };
+
+  // Login Handler
   const handleSubmit = async (e) => {
-    console.log("click");
-
-    if (stylesChange) {
-      await handleUserSubmit(e);
-    } else {
-      await handleNgoSubmit(e);
-    }
-  };
-
-  const handleUserSubmit = async function (e) {
     e.preventDefault();
-    const hasAccess = await document.hasStorageAccess();
-    if (!hasAccess) {
-      await document.requestStorageAccess();
-    }
-    setloader(true);
-    console.log(phone, password);
 
-    const response = await fetch(config.loginUrl, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        phone,
+    if (!validateForm() || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setLoader(true);
+
+    try {
+      // Login API
+      const response = await ApiService.loginUser({
+        identifier,
         password,
-      }),
-    }).finally(() => setloader(false));
-    if (response.status === 200) {
-      const userData = await response.json();
-      navigate("/ngolist");
-    } else {
-      if (response.status === 400) {
-        toast.error(" Email is required");
-      } else if (response.status === 404) {
-        toast.error("User does not exist");
-      } else if (response.status === 401) {
-        toast.error("Invalid user credentials");
+      });
+
+      toast.success("Login Successful!");
+
+      // Fetch current user
+      const currentUserResponse = await ApiService.getCurrentUser();
+      const userData = currentUserResponse.data.data;
+
+      setUser(userData);
+
+      // Auto redirect based on role
+      if (userData.role === "ngo") {
+        navigate("/ngohome");
+      } else if (userData.role === "admin") {
+        navigate("/admin/dashboard");
       } else {
-        toast.error("Something went wrong plese try again later");
+        navigate("/ngolist");
       }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Login failed");
+    } finally {
+      setIsSubmitting(false);
+      setLoader(false);
     }
   };
-  const handleNgoSubmit = async function (e) {
-    e.preventDefault();
-    const hasAccess = await document.hasStorageAccess();
-    if (!hasAccess) {
-      await document.requestStorageAccess();
-    }
-    setloader(true);
-    const response = await fetch(config.loginNgoUrl, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-      }),
-    }).finally(() => setloader(false));
-    console.log("resoponse for ngo login",response);
-    if (response.status === 200) {
-      toast.success("login");
-      const userData = await response.json();
-      navigate("/ngohome");
-    } else {
-      if (response.status === 400) {
-        toast.error(" Email is required");
-      } else if (response.status === 404) {
-        toast.error("User does not exist");
-      } else if (response.status === 401) {
-        toast.error("Invalid user credentials");
-      } else {
-        toast.error("Something went wrong plese try again later");
-      }
-    }
-  };
+
   return (
-    <div
-      data-scroll-section
-      className="h-[calc(100vh-80px)] flex flex-col justify-center items-center"
-    >
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+    <div className="h-[calc(100vh-80px)] flex flex-col justify-center items-center">
+      <ToastContainer />
+
       <h3 className="text-4xl font-bold mb-5">Welcome Back!</h3>
-      <div>
-        <div
-          className={`flex rounded-xl duration-200 ease-in-out overflow-hidden ${
-            !stylesChange ? "flex-row-reverse" : ""
+
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white shadow-xl rounded-xl p-10 flex flex-col gap-6 w-[380px]"
+      >
+        <h3 className="text-3xl font-bold text-center">Sign In</h3>
+
+        {/* Identifier (phone/email) */}
+        <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+          <i className="ri-user-line text-2xl text-gray-600" />
+          <input
+            className="outline-none h-full rounded-xl w-full px-3"
+            placeholder="Phone or Email"
+            type="text"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            disabled={isSubmitting}
+          />
+        </div>
+
+        {/* Password */}
+        <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+          <i className="ri-lock-line text-2xl text-gray-600" />
+          <input
+            className="outline-none h-full rounded-xl w-full px-3"
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={isSubmitting}
+          />
+        </div>
+
+        <Link
+          to="/forgot-password"
+          className="font-bold text-blue-500 hover:underline text-center"
+        >
+          Forgot Password?
+        </Link>
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={`px-8 py-3 font-bold rounded-full transition-all duration-200 ${
+            isSubmitting
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-red-500 hover:bg-red-600 active:scale-95"
           }`}
         >
-          <div
-            className={` w-96 flex items-center justify-center bg-cover bg-center ${
-              stylesChange
-                ? "bg-[url('/designerLogin.jpg')]"
-                : "bg-[url('/login2.jpeg')]"
-            }`}
-          ></div>
-          <div className="flex min-h-96  flex-col items-center px-10 gap-5">
-            <h3 className="text-3xl font-bold">Sign In</h3>
-            <div className="flex flex-col gap-5">
-              {!stylesChange ? (
-                <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                  <i class="ri-mail-line text-2xl"></i>
-                  <input
-                    className="outline-none h-full rounded-xl w-80 px-5"
-                    placeholder="Email"
-                    type="email"
-                    name="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    id="email"
-                  />
-                </div>
-              ) : (
-                <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                  <i class="ri-phone-line text-2xl"></i>
-                  <input
-                    className="outline-none h-full rounded-xl w-80 px-5"
-                    placeholder="Phone"
-                    type="tel"
-                    name="Phone"
-                    id="phone"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-              )}
-              <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <i class="ri-lock-line text-2xl"></i>
-                <input
-                  className="outline-none h-full rounded-xl w-80 px-5"
-                  placeholder="Password"
-                  type="password"
-                  name=""
-                  id=""
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-            </div>
-            <Link className="font-bold">Forget Password?</Link>
-            <button
-              onClick={(e) => handleSubmit(e)}
-              className="px-8 py-3 font-bold rounded-full bg-red-500"
-            >
-              Sign In
-            </button>
-            <div>
-              Sign In as {stylesChange ? "NGO" : "Women"} ?{" "}
-              <button
-                onClick={() => setStyleChange(!stylesChange)}
-                className="text-blue-500 font-bold"
-              >
-                Click Here
-              </button>
-            </div>
-          </div>
+          {isSubmitting ? (
+            <span className="flex items-center gap-2 justify-center">
+              <i className="ri-loader-4-line animate-spin" />
+              Signing In...
+            </span>
+          ) : (
+            "Sign In"
+          )}
+        </button>
+
+        {/* Register */}
+        <div className="text-center text-sm">
+          Don't have an account?{" "}
+          <Link
+            to="/register"
+            className="text-blue-500 font-bold hover:underline"
+          >
+            Register Now
+          </Link>
         </div>
-        <div></div>
-      </div>
+      </form>
     </div>
   );
 }

@@ -15,19 +15,6 @@ function NavBar() {
   // }
   const location=useLocation()
   useEffect(() => {
-    // const fetchUser = async () => {
-    //   const userData = await fetch(config.getCurrentUser, {
-    //     method: "GET",
-    //     credentials: "include",
-    //   }).then((res) => res.json());
-    //   console.log(userData);
-      
-    //   if (userData.statusCode === 200) {
-    //     setIsLogin(false)
-      
-    //   }
-    // };
-    // fetchUser();
     if(userData){
       setIsLogin(false)
     }
@@ -51,7 +38,17 @@ function NavBar() {
     };
   }, []);
 
-
+  const userHome = () => {
+    if (userData?.role === "user") {
+      return "/ngolist";
+    } else if (userData?.role === "ngo") {
+      return "/ngohome";
+    } else if (userData?.role === "admin") {
+      return "/admin/dashboard";
+    } else {
+      return "/";
+    }
+  }
   const logout= async ()=>{
     try {
       
@@ -96,7 +93,7 @@ function NavBar() {
           >
             <ul className="flex flex-col font-bold md:flex-row px-5 py-5 gap-5">
               <NavLink
-                to={userData?!userData?.email?"/ngolist":"/ngohome":"/"}
+                to={userHome()}
                 className={({ isActive }) =>
                   isActive ? `text-yellow-500` : `hover:text-yellow-500`
                 }
@@ -127,6 +124,28 @@ function NavBar() {
               >
                 <li className="cursor-pointer">Contact</li>
               </NavLink>
+              {
+                !isLogin &&
+                 <NavLink
+                to="/profile"
+                className={({ isActive }) =>
+                  isActive ? `text-yellow-500` : `hover:text-yellow-500`
+                }
+              >
+                <li className="cursor-pointer">Profile</li>
+              </NavLink>
+              }
+               {
+                !isLogin && userData?.role!=="admin" &&
+                 <NavLink
+                to={userData?userData?.role==="user"?"/reports":"/ngo/reports":"/"}
+                className={({ isActive }) =>
+                  isActive ? `text-yellow-500` : `hover:text-yellow-500`
+                }
+              >
+                <li className="cursor-pointer">Reports</li>
+              </NavLink>
+              }
               {
                 isLogin && 
               <div className="block  md:hidden gap-5 items-center">

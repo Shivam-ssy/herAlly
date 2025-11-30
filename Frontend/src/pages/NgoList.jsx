@@ -1,40 +1,43 @@
-import { useState,useEffect, useContext } from "react";
-import NgoCard from "../components/NgoCard"
-import config from "../Conf/cofig";
+import { useContext } from "react";
+import NgoCard from "../components/NgoCard";
 import ShowContext from "../context/ShowContext";
 
-function NgoList() { 
-  const {ngoList,userData}=useContext(ShowContext)
-//   useEffect(() => {
-//   const fetchUser = async () => {
-//     const ngoData = await fetch(config.getNgoList, {
-//       method: "GET",
-//     }).then((res) => res.json());
-//     setNgoList(ngoData.data)
-//   };
-//   fetchUser();
-// }, []);
-  console.log("list of ngo",ngoList);
+function NgoList() {
+  const { ngoList, userData } = useContext(ShowContext);
   
   return (
     <>
-    <section data-scroll-section className="px-10 py-10 gap-5 justify-center flex flex-wrap min-h-screen" >
-      {/* <NgoCard title="Jagori" image="/login2.jpeg" time="4 Jan"  details="violence, harrasement, Dalit women confronting caste violence," />
-      <NgoCard title="Apne Aap Women Worldwide" image="/login2.jpeg" time="4 Jan"  details="sex trafficking, prostitution, and sexual exploitation" />
-      <NgoCard title="My Choices Foundation" image="/login2.jpeg" time="4 Jan"  details="Domestic violence, sex trafficking" />
-      {/* <NgoCard title="give me " image="/login2.jpeg" time="4 Jan"  details="sometigng" />
-      <NgoCard title="give me " image="/login2.jpeg" time="4 Jan"  details="sometigng" />
-      <NgoCard title="give me " image="/login2.jpeg" time="4 Jan"  details="sometigng" />
-      <NgoCard title="give me " image="/login2.jpeg" time="4 Jan"  details="sometigng" /> */} 
-      {
-        ngoList.length? ngoList.map((list,index)=>(
-          <NgoCard  key={index} id={list._id} user={userData._id} title={list.name} details={list?.details || "No Details found Conctact for details"} image={list?.image || "/login2.jpeg"}/>
-        )):<div>No ngo found...</div>
-      }
-    </section>
-    {/* <section data-scroll-section className="h-50"></section> */}
+      <section
+        data-scroll-section
+        className="
+          px-10 py-10 
+          grid 
+          grid-cols-1 sm:grid-cols-2 md:grid-cols-3 
+          gap-6
+          min-h-screen
+          place-items-center
+          max-w-7xl
+          mx-auto
+        "
+      >
+        {ngoList.length ? (
+          ngoList.map((list, index) => (
+            <NgoCard
+              key={index}
+              isUser={userData?.role==="user"}
+              id={list._id}
+              user={userData._id}
+              title={list.name}
+              details={list?.ngoDetails?.details || "No details found. Contact for more info."}
+              image={list?.image || "/login2.jpeg"}
+            />
+          ))
+        ) : (
+          <div>No NGO found...</div>
+        )}
+      </section>
     </>
-  )
+  );
 }
 
-export default NgoList
+export default NgoList;

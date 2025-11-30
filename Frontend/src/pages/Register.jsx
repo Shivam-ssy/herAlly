@@ -1,303 +1,523 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { ToastContainer } from 'react-toastify';
-import { toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import config from "../Conf/cofig";
+import { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import ShowContext from "../context/ShowContext";
+import ApiService from "../services/apiServices";
+
 function Register() {
-  const [stylesChange, setStyleChange] = useState(true);
-  const [loader, setloader] = useState(false);
-  const [name,setName]=useState("")
-  const [details,setDetails]=useState("")
-  const [email,setEmail]=useState("")
-  const [password,setPassword]=useState("")
-  const [uniqueId,setuniqueId]=useState("")
-  const [phone,setPhone]=useState("")
-  const [state,setState]=useState("")
-  const [passwordConfirm,setPasswordConfirm]=useState("")
-  const [district,setDistrict]=useState("")
-  const handleSubmit=async(e)=>{
-    console.log("click");
-    if(password.length && password===passwordConfirm){
-      if(stylesChange){
-        await handleUserSubmit(e)
-      }
-      else {
-        await handleNgoSubmit(e)
-      }
-    }
-    else{
-      toast.error("Please match your password")
-    }
-  }
+  const { stylesChange, setStyleChange, setLoader } = useContext(ShowContext);
+  const navigate = useNavigate();
   
-  const handleUserSubmit=  async function(e){
-    e.preventDefault();
-    if(isStrongPassword(password)){
-      setloader(true)
-      
-      const response =await fetch(config.registerUrl,{
-        method:'POST',
-        
-        headers:{
-          'Content-Type':'application/json',
-        },
-        body:JSON.stringify({
-          phone,
-          password,
-        })
-      }).finally(()=>setloader(false))
-      console.log(response)
-      if(response.status===200 || response.status ===201){
-        // alert("Register Successfully")
-        toast.success("Signup successfull");
-      }
-      else{
-        if(response.status===400){
-          toast.error("All fields are required")
-        }
-        else if(response.status===409){
-          toast.error("User with email  already exists")
-          console.log(response.message);
-        }
-        else if(response.status===500){
-          toast.error("Something went wrong please try again")
-        }
-        else{
-          toast.error("Something went wrong")
-        }
-      }
-    }
-    
-    
-   
-}
-  const handleNgoSubmit=  async function(e){
-    e.preventDefault();
-    if(isStrongPassword(password)){
-      setloader(true)
-      
-      const response =await fetch(config.registerNgoUrl,{
-        method:'POST',
-        
-        headers:{
-          'Content-Type':'application/json',
-        },
-        body:JSON.stringify({
-          name,email,number:phone,uniqueId,state,district,password,details
-        })
-      }).finally(()=>setloader(false))
-      console.log(response)
-      if(response.status===200 || response.status ===201){
-        // alert("Register Successfully")
-        toast.success("Signup successfull, Registration in queue");
-      }
-      else{
-        if(response.status===400){
-          toast.error("All fields are required")
-        }
-        else if(response.status===409){
-          toast.error("User with email  already exists")
-          console.log(response.message);
-        }
-        else if(response.status===500){
-          toast.error("Something went wrong please try again")
-        }
-        else{
-          toast.error("Something went wrong")
-        }
-      }
-    }
-    
-    
-   
-}
-const isStrongPassword=(password)=>{
-    const lengthRegex = /.{8,}/;
-    const uppercaseRegex = /[A-Z]/; 
-    const lowercaseRegex = /[a-z]/;
-    const numberRegex = /[0-9]/; 
-    const specialCharacterRegex = /[!@#$%^&*]/; 
+  // Form states
+  const [formData, setFormData] = useState({
+    name: "",
+    details: "",
+    email: "",
+    password: "",
+    uniqueId: "",
+    phone: "",
+    state: "",
+    district: "",
+    passwordConfirm: "",
+  });
   
-    return (
-      lengthRegex.test(password) &&
-      uppercaseRegex.test(password) &&
-      lowercaseRegex.test(password) &&
-      numberRegex.test(password) &&
-      specialCharacterRegex.test(password)
-    );
-  }
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState("");
 
-const handleNameChange = (e) => {
-    const inputName = e.target.value;
+  // Handle input changes
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
 
-    
-    if (/[^a-zA-Z\s]/.test(inputName)) {
-      
-       e.preventDefault();
-
-    } else {
-      setName(inputName); 
+    // Check password strength in real-time
+    if (name === "password") {
+      checkPasswordStrength(value);
     }
   };
 
-  
+  // Handle name input with validation
+  const handleNameChange = (e) => {
+    const inputName = e.target.value;
+    // Only allow letters and spaces
+    if (!/[^a-zA-Z\s]/.test(inputName)) {
+      setFormData((prev) => ({ ...prev, name: inputName }));
+    }
+  };
+
+  // Password strength checker
+  const checkPasswordStrength = (password) => {
+    const checks = {
+      length: password.length >= 8,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[!@#$%^&*]/.test(password),
+    };
+
+    const strength = Object.values(checks).filter(Boolean).length;
+
+    if (strength === 5) setPasswordStrength("Strong");
+    else if (strength >= 3) setPasswordStrength("Medium");
+    else setPasswordStrength("Weak");
+
+    return checks;
+  };
+
+  // Validate password strength
+  const isStrongPassword = (password) => {
+    const checks = checkPasswordStrength(password);
+    return Object.values(checks).every(Boolean);
+  };
+
+  // Form validation
+  const validateForm = () => {
+    const { phone, email, password, details, passwordConfirm, name, uniqueId, state, district } = formData;
+
+    // Common validations
+    if (!phone.trim()) {
+      toast.error("Phone number is required");
+      return false;
+    }
+
+    if (phone.length !== 10) {
+      toast.error("Phone number must be 10 digits");
+      return false;
+    }
+
+    if (!/^\d+$/.test(phone)) {
+      toast.error("Phone number must contain only digits");
+      return false;
+    }
+
+    if (!password.trim()) {
+      toast.error("Password is required");
+      return false;
+    }
+
+    if (!isStrongPassword(password)) {
+      toast.error(
+        "Password must be at least 8 characters with uppercase, lowercase, number, and special character (!@#$%^&*)"
+      );
+      return false;
+    }
+
+    if (password !== passwordConfirm) {
+      toast.error("Passwords do not match");
+      return false;
+    }
+
+    // NGO-specific validations
+    if (!stylesChange) {
+      if (!name.trim()) {
+        toast.error("NGO name is required");
+        return false;
+      }
+
+      if (!email.trim()) {
+        toast.error("Email is required");
+        return false;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        toast.error("Please enter a valid email address");
+        return false;
+      }
+
+      if (!uniqueId.trim()) {
+        toast.error("Unique Registration Number is required");
+        return false;
+      }
+
+      if (!state.trim()) {
+        toast.error("State is required");
+        return false;
+      }
+
+      if (!district.trim()) {
+        toast.error("District is required");
+        return false;
+      }
+
+      if (!details.trim()) {
+        toast.error("Please specify your major field");
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Handle user registration
+  const handleUserRegister = async () => {
+    try {
+      const response = await ApiService.registerUser({
+        phone: formData.phone,
+        password: formData.password,
+        role: "user",
+      });
+
+      if (response.data) {
+        toast.success("Registration successful! Please login to continue.");
+        setTimeout(() => navigate("/login"), 2000);
+      }
+    } catch (error) {
+      handleRegistrationError(error);
+    }
+  };
+
+  // Handle NGO registration
+  const handleNgoRegister = async () => {
+    try {
+      const response = await ApiService.registerUser({
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+        role: "ngo",
+        ngoDetails:{
+          uniqueId: formData.uniqueId,
+          state: formData.state,
+          district: formData.district,
+          details: formData.details,
+        }
+      });
+      console.log(response);
+      
+      if (response.data) {
+        toast.success("Registration successful! Your application is in the queue for approval.");
+        setTimeout(() => navigate("/login"), 2000);
+      }
+    } catch (error) {
+      console.log(error);
+      
+      handleRegistrationError(error);
+    }
+  };
+
+  // Centralized error handling
+  const handleRegistrationError = (error) => {
+    const status = error.response?.status;
+    const message = error.response?.data?.message;
+
+    switch (status) {
+      case 400:
+        toast.error(message || "All fields are required");
+        break;
+      case 409:
+        toast.error("User with this email or phone already exists");
+        break;
+      case 500:
+        toast.error("Server error. Please try again later");
+        break;
+      default:
+        toast.error(message || "Something went wrong. Please try again");
+    }
+  };
+
+  // Main submit handler
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // Validate form
+    if (!validateForm()) return;
+
+    // Prevent multiple submissions
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setLoader(true);
+
+    try {
+      if (stylesChange) {
+        await handleUserRegister();
+      } else {
+        await handleNgoRegister();
+      }
+    } catch (error) {
+      console.error("Registration error:", error);
+    } finally {
+      setIsSubmitting(false);
+      setLoader(false);
+    }
+  };
+
+  // Handle registration type toggle
+  const handleToggleRegistrationType = () => {
+    setStyleChange(!stylesChange);
+    // Clear form when switching
+    setFormData({
+      name: "",
+      details: "",
+      email: "",
+      password: "",
+      uniqueId: "",
+      phone: "",
+      state: "",
+      district: "",
+      passwordConfirm: "",
+    });
+    setPasswordStrength("");
+  };
+
+  // Password strength indicator color
+  const getStrengthColor = () => {
+    if (passwordStrength === "Strong") return "text-green-500";
+    if (passwordStrength === "Medium") return "text-yellow-500";
+    return "text-red-500";
+  };
+
   return (
     <>
-    <section data-scroll-section  className="min-h-[calc(100vh-80px)] h-fit w-full flex flex-col justify-center items-center">
-    <ToastContainer className={`top-48`} position="bottom-right" autoClose={5000} hideProgressBar={false} newestOnTop={false} closeOnClick rtl={false} pauseOnFocusLoss draggable pauseOnHover />
-      <h3 className="text-4xl font-bold mb-5">New Registration</h3>
-        <div  className={`flex rounded-xl duration-200 ease-in-out overflow-hidden ${!stylesChange?"flex-row-reverse":""}`}>
-          <div className={` w-96  bg-cover bg-center ${stylesChange?"bg-[url('/designerLogin.jpg')]":"bg-[url('/login2.jpeg')]"}`}></div>
-          <div  className="flex min-h-96  flex-col items-center px-10 gap-5">
+      <section
+        data-scroll-section
+        className="min-h-[calc(100vh-80px)] h-fit w-full flex flex-col justify-center items-center py-10"
+      >
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+        />
+
+        <h3 className="text-4xl font-bold mb-5">New Registration</h3>
+
+        <div
+          className={`flex rounded-xl duration-200 ease-in-out overflow-hidden shadow-2xl ${
+            !stylesChange ? "flex-row-reverse" : ""
+          }`}
+        >
+          {/* Image Section */}
+          <div
+            className={`w-96 bg-cover bg-center ${
+              stylesChange ? "bg-[url('/designerLogin.jpg')]" : "bg-[url('/login2.jpeg')]"
+            }`}
+          />
+
+          {/* Form Section */}
+          <form
+            onSubmit={handleSubmit}
+            className="flex min-h-96 flex-col items-center px-10 gap-5 py-8"
+          >
             <h3 className="text-3xl font-bold">Sign Up</h3>
-            <div className="flex flex-col gap-5">
-                {
-                    !stylesChange && 
-                    <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <i class="ri-user-line text-2xl"></i>
-                <input
-                  className="outline-none h-full rounded-xl w-80 px-5"
-                  placeholder="NGO Name"
-                  type="text"
-                  name="Ngoname"
-                  id="ngoname"
-                  value={name}
-                  onChange={(e)=>handleNameChange(e)}
-                />
-              </div>
-                }
-                {
-                    !stylesChange && 
-                    <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <i class="ri-mail-line text-2xl"></i>
-                <input
-                  className="outline-none h-full rounded-xl w-80 px-5"
-                  placeholder="Email"
-                  type="email"
-                  name="email"
-                  id="email"
-                  value={email}
-                  onChange={(e)=>setEmail(e.target.value)}
-                />
-              </div>
-                }
-              <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <i class="ri-phone-line text-2xl"></i>
-                <input
-                  className="outline-none h-full rounded-xl w-80 px-5"
-                  placeholder="Phone"
-                  type="tel"
-                  name="phone"
-                  id="phone"
-                  max={10}
-                  required
-                  value={phone}
-                  onChange={(e)=>setPhone(e.target.value)}
-                />
-              </div>
-              {
-                    !stylesChange && 
-                    <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <i class="ri-mail-line text-2xl"></i>
-                <input
-                  className="outline-none h-full rounded-xl w-80 px-5"
-                  placeholder="Unique Registration Number"
-                  type="text"
-                  name="uniqueId"
-                  id="uniqueId"
-                  value={uniqueId}
-                  required
-                  onChange={(e)=>setuniqueId(e.target.value)}
-                />
-              </div>
-                }
-              {
-                    !stylesChange && 
-                    <div className="flex w-full justify-between">
-                    <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <input
-                  className="outline-none h-full rounded-xl w-40 px-5"
-                  placeholder="Enter State"
-                  type="text"
-                  name="state"
-                  id="state"
-                  value={state}
-                  onChange={(e)=>setState(e.target.value)}
 
-                />
-              </div>
-                    <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <input
-                  className="outline-none h-full rounded-xl w-40 px-5"
-                  placeholder="Enter District"
-                  type="text"
-                  name="district"
-                  id="district"
-                  value={district}
-                  onChange={(e)=>setDistrict(e.target.value)}
-                />
-              </div>
-
-                    </div>
-                }
-                {
-                  !stylesChange &&
-                  <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                  <i class="ri-lock-line text-2xl"></i>
+            <div className="flex flex-col gap-4 w-full">
+              {/* NGO Name */}
+              {!stylesChange && (
+                <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+                  <i className="ri-user-line text-2xl text-gray-600" />
                   <input
-                    className="outline-none h-full rounded-xl w-80 px-5"
-                    placeholder="Major Field you cover"
+                    className="outline-none h-full rounded-xl w-80 px-3"
+                    placeholder="NGO Name"
                     type="text"
-                    name="details"
-                    id="details"
-                    value={details}
-                    onChange={(e)=>setDetails(e.target.value)}
+                    name="name"
+                    value={formData.name}
+                    onChange={handleNameChange}
+                    disabled={isSubmitting}
+                    autoComplete="organization"
                   />
                 </div>
-                }
-              <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <i class="ri-lock-line text-2xl"></i>
+              )}
+
+              {/* Email */}
+              {!stylesChange && (
+                <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+                  <i className="ri-mail-line text-2xl text-gray-600" />
+                  <input
+                    className="outline-none h-full rounded-xl w-80 px-3"
+                    placeholder="Email"
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                    autoComplete="email"
+                  />
+                </div>
+              )}
+
+              {/* Phone */}
+              <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+                <i className="ri-phone-line text-2xl text-gray-600" />
                 <input
-                  className="outline-none h-full rounded-xl w-80 px-5"
-                  placeholder="Password"
-                  type="password"
-                  name="passoword"
-                  id="password"
-                  value={password}
-                  onChange={(e)=>setPassword(e.target.value)}
+                  className="outline-none h-full rounded-xl w-80 px-3"
+                  placeholder="Phone (10 digits)"
+                  type="tel"
+                  name="phone"
+                  maxLength={10}
+                  value={formData.phone}
+                  onChange={handleChange}
+                  disabled={isSubmitting}
+                  autoComplete="tel"
                 />
               </div>
-              <div className="flex border items-center border-gray-600 rounded-xl h-12">
-                <i class="ri-lock-line text-2xl"></i>
-                <input
-                  className="outline-none h-full rounded-xl w-80 px-5"
-                  placeholder="Confirm Password"
-                  type="password"
-                  name="confirmPassoword"
-                  id="confirmPassword"
-                  value={passwordConfirm}
-                  onChange={(e)=>setPasswordConfirm(e.target.value)}
-                />
+
+              {/* Unique ID */}
+              {!stylesChange && (
+                <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+                  <i className="ri-bank-card-line text-2xl text-gray-600" />
+                  <input
+                    className="outline-none h-full rounded-xl w-80 px-3"
+                    placeholder="Unique Registration Number"
+                    type="text"
+                    name="uniqueId"
+                    value={formData.uniqueId}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              )}
+
+              {/* State and District */}
+              {!stylesChange && (
+                <div className="flex w-full justify-between gap-3">
+                  <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3 flex-1">
+                    <input
+                      className="outline-none h-full rounded-xl w-full px-3"
+                      placeholder="State"
+                      type="text"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3 flex-1">
+                    <input
+                      className="outline-none h-full rounded-xl w-full px-3"
+                      placeholder="District"
+                      type="text"
+                      name="district"
+                      value={formData.district}
+                      onChange={handleChange}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Major Field */}
+              {!stylesChange && (
+                <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+                  <i className="ri-briefcase-line text-2xl text-gray-600" />
+                  <input
+                    className="outline-none h-full rounded-xl w-80 px-3"
+                    placeholder="Major Field (e.g., Education, Health)"
+                    type="text"
+                    name="details"
+                    value={formData.details}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              )}
+
+              {/* Password */}
+              <div className="flex flex-col gap-1">
+                <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+                  <i className="ri-lock-line text-2xl text-gray-600" />
+                  <input
+                    className="outline-none h-full rounded-xl w-80 px-3"
+                    placeholder="Password"
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                    autoComplete="new-password"
+                  />
+                </div>
+                {formData.password && (
+                  <span className={`text-xs ${getStrengthColor()} px-3`}>
+                    Strength: {passwordStrength}
+                  </span>
+                )}
+              </div>
+
+              {/* Confirm Password */}
+              <div className="flex flex-col gap-1">
+                <div className="flex border items-center border-gray-600 rounded-xl h-12 px-3">
+                  <i className="ri-lock-line text-2xl text-gray-600" />
+                  <input
+                    className="outline-none h-full rounded-xl w-80 px-3"
+                    placeholder="Confirm Password"
+                    type="password"
+                    name="passwordConfirm"
+                    value={formData.passwordConfirm}
+                    onChange={handleChange}
+                    disabled={isSubmitting}
+                    autoComplete="new-password"
+                  />
+                </div>
+                {formData.passwordConfirm && formData.password !== formData.passwordConfirm && (
+                  <span className="text-xs text-red-500 px-3">Passwords do not match</span>
+                )}
               </div>
             </div>
-            <button onClick={handleSubmit} className="px-8 py-3 font-bold rounded-full bg-red-500">
-              Sign Up
+
+            {/* Password Requirements */}
+            <div className="text-xs text-gray-600 px-3 w-full">
+              Password must contain:
+              <ul className="list-disc list-inside mt-1">
+                <li>At least 8 characters</li>
+                <li>One uppercase letter</li>
+                <li>One lowercase letter</li>
+                <li>One number</li>
+                <li>One special character (!@#$%^&*)</li>
+              </ul>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className={`px-8 py-3 font-bold rounded-full transition-all duration-200 ${
+                isSubmitting
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-red-500 hover:bg-red-600 active:scale-95"
+              }`}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <i className="ri-loader-4-line animate-spin" />
+                  Signing Up...
+                </span>
+              ) : (
+                "Sign Up"
+              )}
             </button>
-            <div>
-              Sign Up as  {stylesChange ? "NGO" : "Women"} ? {" "}
+
+            {/* Toggle Registration Type */}
+            <div className="text-center">
+              Sign Up as {stylesChange ? "NGO" : "Women"}?{" "}
               <button
-                onClick={() => setStyleChange(!stylesChange)}
-                className="text-blue-500 font-bold"
+                type="button"
+                onClick={handleToggleRegistrationType}
+                disabled={isSubmitting}
+                className="text-blue-500 font-bold hover:underline disabled:opacity-50"
               >
                 Click Here
               </button>
             </div>
-          </div>
+
+            {/* Login Link */}
+            <div className="text-center text-sm">
+              Already have an account?{" "}
+              <Link to="/login" className="text-blue-500 font-bold hover:underline">
+                Login Now
+              </Link>
+            </div>
+          </form>
         </div>
-        <div  className="h-50"></div>
       </section>
-      <section  data-scroll-section   className="h-32"></section>
+      <section data-scroll-section className="h-32" />
     </>
   );
 }

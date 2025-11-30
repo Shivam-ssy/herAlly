@@ -1,171 +1,76 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { NgoUsers } from "../models/Ngo.model.js";
 import { Message } from "../models/Message.model.js";
-import { Users } from "../models/UserModule.models.js";
-const generateAccessAndRefereshTokens = async(userId) =>{
-    try {
-        const user = await NgoUsers.findById(userId)
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
-
-        user.refreshToken = refreshToken
-        await user.save({ validateBeforeSave: false })
-
-        return {accessToken, refreshToken}
-
-
-    } catch (error) {
-        throw new ApiError(500, "Something went wrong while generating referesh and access token")
-    }
-}
+import { User } from "../models/user.model.js";
+import mongoose from "mongoose";
 const options = {
-   
-    httpOnly:true,
-    secure:true,
-    maxAge:7200000,
+
+    httpOnly: true,
+    secure: true,
+    maxAge: 7200000,
     sameSite: 'None'
 }
-const registerNgo = asyncHandler( async (req, res) => {
-   
-    const {name,email,number,uniqueId,state,district,password,details } = req.body
-    console.log("phone: ", req.body);
 
-    if (
-        [number, password,uniqueId].some((field) => field?.trim() === "")
-    ) {
-        throw new ApiError(400, "Number, password, uniqueId are required")
-    }
-
-    const existedUser = await NgoUsers.findOne({
-      number
-    })
-
-    if (existedUser) {
-        throw new ApiError(409, "User with Phone  already exists")
-    }
-    //console.log(req.files);
-      
-    const userNgo = await NgoUsers.create({
-        name,
-        number:Number(number), 
-        email,
-        state,
-        district,
-        uniqueId,
-        password,
-        details
-    })
-
-    const createdUser = await NgoUsers.findById(userNgo._id).select(
-        "-password -refreshToken"
+const listNgos = asyncHandler(async (req, res) => {
+    const ngoList = await User.find({
+        role: "ngo",
+        "ngoDetails.isVerified": true
+    }).select("-password -accessToken -refreshToken");
+    if (!ngoList)
+        throw new ApiError(500, "Something went wrong while fetching")
+    return res.status(200).json(
+        new ApiResponse(200, ngoList, "Fetched successfully")
     )
-
-    if (!createdUser) {
-        throw new ApiError(500, "Something went wrong while registering the user")
-    }
-
-    return res.status(201).json(
-        new ApiResponse(200, createdUser, "User registered Successfully")
-    )
-
-} )
-
-
-const loginNgo = asyncHandler(async (req, res) =>{
-   
-
-    const {email, password} = req.body
-
-    if (!email) {
-        throw new ApiError(400, " Phone is required")
-    }
-    
-    const user = await NgoUsers.findOne({
-        email
-    })
-
-    if (!user) {
-        throw new ApiError(404, "User does not exist")
-    }
-
-   const isPasswordValid = await user.isPasswordCorrect(password)
-
-   if (!isPasswordValid) {
-    throw new ApiError(401, "Invalid user credentials")
-    }
-
-   const {accessToken, refreshToken} = await generateAccessAndRefereshTokens(user._id)
-
-    const loggedInUser = await NgoUsers.findById(user._id).select("-password -refreshToken")
-
-    console.log(loggedInUser)
-    return res
-    .status(200)
-    .cookie("accessToken", accessToken,options)
-    .cookie("refreshToken", refreshToken,options)
-    .json(
-        new ApiResponse(
-            200, 
-            {
-                user: loggedInUser
-            },
-            "ngo User logged In Successfully"
-        )
-    )
-    
-
 
 })
 
+const getNgoById = asyncHandler(async (req, res) => {
+    const ngoId = req.params.id;
 
-const listNgos=asyncHandler(async(req,res)=>{
-    const ngoList = await NgoUsers.find({isVarified:true}).select("-password -accessToken");
-    if(!ngoList)
-        throw new ApiError(500,"Something went wrong while fetching")
-     return res.status(200).json(
-        new ApiResponse(200,ngoList,"Fetched successfully")
-     )
-     
+    const ngo = await User.findById(ngoId).select("-password -accessToken -refreshToken");
+    if (!ngo)
+        throw new ApiError(404, "NGO not found")
+    return res.status(200).json(
+        new ApiResponse(200, ngo, "NGO fetched successfully")
+    )
 })
 
+const listConnectedUser = asyncHandler(async (req, res) => {
+    const NgoUser = req.user;
 
-const listConnectedUser=asyncHandler(async(req,res)=>{
-    const NgoUser=req.user;
-    // console.log(NgoUser);
-    
+    // console.log("ngo", NgoUser);
+
+    if (!NgoUser || !mongoose.Types.ObjectId.isValid(NgoUser._id)) {
+        throw new ApiError(400, "Invalid NGO ID");
+    }
+
+    const ngoObjectId = new mongoose.Types.ObjectId(NgoUser._id);
+
     const messages = await Message.aggregate([
-        { 
-            $match: { recipient: NgoUser._id } 
-        },
-        { 
-            $sort: { timestamp: -1 } 
-        },
-        { 
+        { $match: { recipient: ngoObjectId } },
+        { $sort: { createdAt: -1 } },
+        {
             $group: {
-                _id: "$sender", 
-                latestMessage: { $first: "$$ROOT" } 
+                _id: "$sender",
+                latestMessage: { $first: "$$ROOT" }
             }
         },
-        {
-            $replaceRoot: { newRoot: "$latestMessage" } 
-        }
+        { $replaceRoot: { newRoot: "$latestMessage" } }
     ]);
 
-    if (messages && messages.length > 0) {
-        // Use a Map to ensure unique entries based on a specified key (e.g., 'sender')
-        const uniqueSenderIds = [...new Set(messages.map(message => message.sender))];
-
-        // Fetch user data for each unique sender ID
-        const users = await Promise.all(uniqueSenderIds.map(async (senderId) => {
-            return await Users.findById({_id: senderId}).select("-number -password");
-        }));
-        return res.status(200).json(
-            new ApiResponse(200, users, "Unique users fetched successfully")
-        );
+    if (!messages.length) {
+        throw new ApiError(404, "No users found");
     }
-    throw new ApiError(404,"No user found")
-})
 
-export {registerNgo,loginNgo,listNgos,listConnectedUser}
+    const uniqueSenderIds = [...new Set(messages.map(m => m.sender.toString()))];
+
+    const users = await User.find({ _id: { $in: uniqueSenderIds } })
+        .select("-password -accessToken -refreshToken");
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, users, "Unique users fetched successfully"));
+});
+
+export { listNgos, listConnectedUser ,getNgoById};

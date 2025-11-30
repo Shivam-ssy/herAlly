@@ -1,35 +1,44 @@
-import MessageCard from "../components/MessageCard";
-import React, { useState, useEffect, useRef, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useParams } from "react-router-dom";
 import io from "socket.io-client";
 import ShowContext from "../context/ShowContext";
 import config from "../Conf/cofig";
-const socket = io(config.server);
+import MessageCard from "../components/MessageCard";
 
 function ChatScreen() {
-  const {senderId,recieverId}=useParams()
+  const { senderId, recieverId } = useParams();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const {stylesChange,ngoList,userData,connectedUser}=useContext(ShowContext)
-  console.log(messages);
+  const [socket, setSocket] = useState(null);
 
-  const foundObject = ngoList.length && ngoList.find(item => item._id === recieverId);
-  const foundObject2 = connectedUser.length && connectedUser.find(item => item?._id === recieverId);
-  const handleKeyPress = (event) => {
-    if (event.key === 'Enter') {
-      event.preventDefault(); // Prevents the default behavior of form submission if applicable
-      sendMessage();
-    }
-  };
-  
+  const { ngoList, userData, connectedUser } = useContext(ShowContext);
+
+  // ---------- INIT SOCKET CORRECTLY ----------
   useEffect(() => {
-    // Join the chat by emitting the `joinChat` event with the sender and recipient IDs
+    const newSocket = io(config.server, {
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+      console.log("Socket disconnected");
+    };
+  }, []);
+
+  // ---------- JOIN CHAT & LISTEN TO EVENTS ----------
+  useEffect(() => {
+    if (!socket) return;
+
+    // Join room
     socket.emit("joinChat", {
-      senderId:senderId,
+      senderId,
       recipientId: recieverId,
     });
 
-    // Listen for previous messages
+    // Listen for old messages
     socket.on("previousMessages", (previousMessages) => {
       setMessages(previousMessages);
     });
@@ -39,66 +48,78 @@ function ChatScreen() {
       setMessages((prevMessages) => [...prevMessages, newMessage]);
     });
 
-    // Cleanup on unmount
     return () => {
       socket.off("previousMessages");
       socket.off("receiveMessage");
     };
-  }, []);
-  const date=new Date(Date.now())
-  
+  }, [socket]);
+
+  // ---------- SEND MESSAGE ----------
   const sendMessage = () => {
-    const data = {
-      senderId: senderId,
-      senderType: stylesChange?"Users":"NgoUsers",
+    if (!socket || message.trim() === "") return;
+
+    socket.emit("sendMessage", {
+      senderId,
       recipientId: recieverId,
-      recipientType: !stylesChange?"Users":"NgoUsers",
       message,
-      timestamp:date
-    };
-    socket.emit("sendMessage", data);
-    // setMessages((prevMessages) => [...prevMessages, data]);
+    });
 
     setMessage("");
   };
-  // const sendMessage = () => {
-  //     const data = {
-  //       senderId: 'user-id-1', // Replace with actual user ID
-  //       senderType: 'User', // or 'NGO'
-  //       recipientId: 'ngo-id-1', // Replace with actual recipient ID
-  //       recipientType: 'NGO',
-  //       messageText: message,
-  //       roomName: 'room-1', // Example room, adjust as needed
-  //     };
-  //     socket.emit('sendMessage', data);
-  //     setMessage('');
-  //   };
+
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") sendMessage();
+  };
+
+  // ---------- FIND CHAT NAME ----------
+  const foundObject = ngoList?.find((item) => item._id === recieverId);
+  const foundObject2 = connectedUser?.find((item) => item?._id === recieverId);
 
   return (
-    <div  className="w-full flex justify-center ">
-      <div   className="md:w-1/2 rounded-xl h-[calc(100vh-170px)]  w-full bg-[#edf0f5]">
-        <div className="w-full border-2 rounded-xl border-gray-500 py-3">
-          <h3 className="font-bold  text-2xl px-5">{foundObject?.name || foundObject2?.name}</h3>
+    <div className="w-full flex justify-center">
+      <div className="md:w-1/2 rounded-xl h-[calc(100vh-170px)] w-full bg-[#edf0f5]">
+        
+        {/* Header */}
+        <div className="w-full flex items-center border-2 rounded-xl border-gray-500 py-3">
+          <button
+            onClick={() => window.history.back()}
+            className="hover:text-yellow-300 pl-5 inline-flex items-center gap-2 text-lg transition-colors"
+          >
+            <span className="text-2xl">←</span> Back
+          </button>
+          <h3 className="font-bold text-2xl px-5">
+            {foundObject?.name || foundObject2?.name}
+          </h3>
         </div>
-        <div className=" relative w-full h-full bg-green-200">
-          <div  className="h-full w-full overflow-y-auto  relative">
-            <section data-scroll-lock  className="flex message-container h-full overflow-y-auto  relative w-full flex-col justify-end pb-16 gap-5">
-              {/* Render Messages */}
-              {messages.length>0 &&
-                messages.map((data, index) => (
-                  <MessageCard key={index} message={data.message} time={data.timestamp} isReciever={userData?._id ==data.sender || userData?._id ==data.senderId?false:true} />
-                ))}
+
+        {/* Chat Messages */}
+        <div className="relative w-full h-full bg-green-200">
+          <div className="h-full w-full overflow-y-auto relative">
+            <section className="flex message-container h-full overflow-y-auto relative w-full flex-col justify-end pb-16 gap-5">
+              {messages.map((data, index) => (
+                <MessageCard
+                  key={index}
+                  message={data.message}
+                  time={data.timestamp}
+                  isReciever={
+                    userData?._id === data.sender || userData?._id === data.senderId
+                      ? false
+                      : true
+                  }
+                />
+              ))}
             </section>
           </div>
+
+          {/* Message Input */}
           <div className="w-full flex bg-[#edf0f5] rounded-xl px-3 h-10 absolute bottom-2">
             <input
               value={message}
               onChange={(e) => setMessage(e.target.value)}
+              onKeyDown={handleKeyPress}
               className="w-full h-full outline-none bg-inherit"
               type="text"
               placeholder="Enter Your Message"
-              onKeyDown={handleKeyPress} // Attach the keydown event
-
             />
             <i
               onClick={sendMessage}

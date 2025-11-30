@@ -6,50 +6,62 @@ import "locomotive-scroll/dist/locomotive-scroll.css";
 import { useRef, useEffect,useContext } from 'react';
 import ShowContext from './context/ShowContext';
 import Loader from './components/Loader';
+import { ToastContainer } from 'react-toastify';
 
 function App() {
   const location = useLocation();
   const scrollRef = useRef(null);
   const {loader}=useContext(ShowContext)
-  useEffect(() => {
-    const scrollInstance = new LocomotiveScroll({
-      el: scrollRef.current,
-      smooth: true,
-      lerp: 0.1, // Customizes scrolling smoothness
-    });
+  // useEffect(() => {
+  //   const scrollInstance = new LocomotiveScroll({
+  //     el: scrollRef.current,
+  //     smooth: true,
+  //     lerp: 0.1, // Customizes scrolling smoothness
+  //   });
 
-    const handleResize = () => {
-      scrollInstance.update(); // Updates Locomotive Scroll on resize
-    };
-    window.addEventListener("resize", handleResize);
+  //   const handleResize = () => {
+  //     scrollInstance.update(); // Updates Locomotive Scroll on resize
+  //   };
+  //   window.addEventListener("resize", handleResize);
 
-    // Function to enable data-scroll-lock for a specific section (e.g., chat)
-    const enableNativeScroll = () => {
-      const lockedSection = scrollRef.current.querySelector('[data-scroll-lock]');
-      if (lockedSection) {
-        lockedSection.style.overflowY = 'auto'; // Allows native scrolling
-        scrollInstance.stop(); // Temporarily stops Locomotive Scroll
-      }
-    };
+  //   // Function to enable data-scroll-lock for a specific section (e.g., chat)
+  //   const enableNativeScroll = () => {
+  //     const lockedSection = scrollRef.current.querySelector('[data-scroll-lock]');
+  //     if (lockedSection) {
+  //       lockedSection.style.overflowY = 'auto'; // Allows native scrolling
+  //       scrollInstance.stop(); // Temporarily stops Locomotive Scroll
+  //     }
+  //   };
 
-    enableNativeScroll(); // Call the function to enable scrolling for the section
+  //   enableNativeScroll(); // Call the function to enable scrolling for the section
 
-    return () => {
-      scrollInstance.destroy(); // Cleans up Locomotive Scroll instance
-      window.removeEventListener("resize", handleResize);
-    };
-  }, [location]);
-
+  //   return () => {
+  //     scrollInstance.destroy(); // Cleans up Locomotive Scroll instance
+  //     window.removeEventListener("resize", handleResize);
+  //   };
+  // }, [location]);
+// data-scroll-container ref={scrollRef}
   return (
     <>
-    
-      <div data-scroll-container ref={scrollRef}>
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+          />
+      <div >
         <div className='w-full min-h-24'>
           <NavBar />
         </div>
         {
           loader? <Loader/>:
-        <Outlet data-scroll-section />
+        <Outlet  />
         }
       </div>
     </>

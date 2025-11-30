@@ -12,7 +12,7 @@ dotenv.config({
 const origin= process.env.frontend_url || "http://localhost:5173";
 app.use(cors({
   origin,
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'OPTIONS','PATCH','DELETE','PUT'],
   allowedHeaders: ['Content-Type'],
   credentials:true,
 })); 
@@ -21,69 +21,14 @@ const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin,
-    methods: ['GET', 'POST'],
+    methods: ['GET', 'POST', 'OPTIONS','PATCH','DELETE','PUT'],
+    credentials:true,
   }
 });
-app.use(express.json({limit: "16kb"}))
-app.use(express.urlencoded({extended: true, limit: "16kb"}))
+app.use(express.json())
+app.use(express.urlencoded({extended: true}))
 app.use(cookieParser())
-
-// io.on('connection', (socket) => {
-//   console.log('New client connected:', socket.id);
-
-//   socket.on('joinChat', async (data) => {
-//     const { senderId, recipientId } = data;
-
-//     // Fetch previous messages between sender and recipient from the database
-//     try {
-//       const previousMessages = await Message.find({
-//         $or: [
-//           { sender: senderId, recipient: recipientId },
-//           { sender: recipientId, recipient: senderId },
-//         ],
-//       }).sort({ createdAt: 1 }); // Sort by creation date ascending
-
-//       // Emit previous messages to the user
-//       socket.emit('previousMessages', previousMessages);
-//     } catch (error) {
-//       console.error('Error fetching previous messages:', error);
-//     }
-//   });
-
-//   // Send message event
-//   socket.on('sendMessage', async (data) => {
-//     const { senderId, senderType, recipientId, recipientType, message } = data;
-//     console.log(data);
-    
-//     try {
-//       // Save the new message to the database
-//       const newMessage = new Message({
-//         sender: senderId,
-//         senderType: senderType,
-//         recipient: recipientId,
-//         recipientType: recipientType,
-//         message: message,
-//       });
-//       await newMessage.save();
-
-//       // Emit the new message to the recipient
-//       socket.to(recipientId).emit('receiveMessage', newMessage);
-
-//       // Emit the message sent acknowledgment back to the sender
-//       socket.emit('messageSent', newMessage);
-
-//     } catch (error) {
-//       console.error('Error sending message:', error);
-//       socket.emit('error', { message: 'Message could not be sent' });
-//     }
-//   });
-
-//   // Handle disconnection
-//   socket.on('disconnect', () => {
-//     console.log('Client disconnected:', socket.id);
-//   });
-// });
-
+// Socket.io connection handler
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
@@ -115,15 +60,13 @@ io.on('connection', (socket) => {
 
   // Handler for sending a message
   socket.on('sendMessage', async (data) => {
-    const { senderId, senderType, recipientId, recipientType, message } = data;
+    const { senderId, recipientId, message } = data;
 
     try {
       // Save the new message to the database
       const newMessage = new Message({
         sender: senderId,
-        senderType: senderType,
         recipient: recipientId,
-        recipientType: recipientType,
         message: message,
       });
       await newMessage.save();
@@ -148,9 +91,14 @@ io.on('connection', (socket) => {
 //routes import
 import userRouter from './routes/user.routes.js'
 import ngoRouter from './routes/ngo.routes.js'
+import reportRouter from './routes/report.routes.js'
+import adminRouter from './routes/admin.routes.js'
 // //routes declaration
 app.use("/api/v1/users", userRouter)
 app.use("/api/v1/ngos",ngoRouter)
+app.use("/api/v1/reports", reportRouter)
+app.use("/api/v1/admin", adminRouter)
+app.use("/api/v1/admin", adminRouter)
 
 // http://localhost:8000/api/v1/users/register
 

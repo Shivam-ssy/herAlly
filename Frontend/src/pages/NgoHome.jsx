@@ -6,7 +6,7 @@ import ShowContext from "../context/ShowContext";
 function NgoHome() { 
     const {userData,connectedUser}=useContext(ShowContext)
  
-console.log(connectedUser);
+// console.log(connectedUser);
 
   return (
     <>
