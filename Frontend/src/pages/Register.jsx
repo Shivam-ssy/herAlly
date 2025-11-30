@@ -171,12 +171,12 @@ function Register() {
   const handleNgoRegister = async () => {
     try {
       const response = await ApiService.registerUser({
-        name: formData.name,
         email: formData.email,
         phone: formData.phone,
         password: formData.password,
         role: "ngo",
         ngoDetails:{
+          name: formData.name,
           uniqueId: formData.uniqueId,
           state: formData.state,
           district: formData.district,
