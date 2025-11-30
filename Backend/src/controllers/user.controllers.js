@@ -32,57 +32,62 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
 // ---------------- REGISTER ----------------
 const registerUser = asyncHandler(async (req, res) => {
-    const { phone, password, role, ngoDetails } = req.body;
-    // console.log(req.body);
-    
+    const { phone, email, password, role, ngoDetails } = req.body;
+
     // Validate required fields
     if (!phone || !password) {
         throw new ApiError(400, "Phone and password are required");
     }
 
-    // Validate phone format (basic validation)
+    // Validate phone number format
     if (!/^\d{10}$/.test(phone)) {
         throw new ApiError(400, "Phone number must be 10 digits");
     }
 
-    // Check if user already exists
-    const existedUser = await User.findOne({ phone });
+    // Check if user already exists (phone always, email only if provided)
+    const query = email
+        ? { $or: [{ phone }, { email }] }
+        : { phone };
+
+    const existedUser = await User.findOne(query);
 
     if (existedUser) {
-        throw new ApiError(409, "User with this phone already exists");
+        throw new ApiError(409, "User with this phone or email already exists");
     }
 
-    // Auto-generate name only for normal users
+    // Auto-generate name for normal users
     const generateRandomId = () => Math.floor(10000 + Math.random() * 90000);
     const autoName = `USER${generateRandomId()}`;
 
+    // Base user data
     let data = {
         name: role === "user" ? autoName : ngoDetails?.name || autoName,
         phone,
+        email: email || null,
         password,
-        role: role || "user" // Default to "user" if not provided
+        role: role || "user"
     };
 
-    // If NGO → ensure required fields
+    // NGO-specific checks
     if (role === "ngo") {
         if (!ngoDetails?.uniqueId) {
             throw new ApiError(400, "NGO uniqueId is required for NGO registration");
         }
-        
-        // Validate NGO details structure
+
         if (!ngoDetails.state || !ngoDetails.district) {
             throw new ApiError(400, "NGO state and district are required");
         }
-        
-        // Check if NGO uniqueId already exists
+
+        // Check uniqueId uniqueness
         const existingNgo = await User.findOne({ "ngoDetails.uniqueId": ngoDetails.uniqueId });
         if (existingNgo) {
             throw new ApiError(409, "NGO with this uniqueId already exists");
         }
-        
+
         data.ngoDetails = ngoDetails;
     }
 
+    // Create user
     const user = await User.create(data);
 
     const createdUser = await User.findById(user._id).select("-password -refreshToken");

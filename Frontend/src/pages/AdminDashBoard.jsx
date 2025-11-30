@@ -41,6 +41,8 @@ const AdminDashboard = () => {
     setLoading(true);
     try {
       const response = await ApiService.getNgoForAdmin(status);
+      console.log("get ngos",response);
+      
       if (response.status === 200) {
         setNgos(response.data.data);
         setFilteredNgos(response.data.data);
@@ -269,7 +271,7 @@ const AdminDashboard = () => {
                           <span className="font-medium">Contact:</span> {ngo.name}
                         </div>
                         <div>
-                          <span className="font-medium">Email:</span> {ngo.email || 'N/A'}
+                          <span className="font-medium">Email:</span> {ngo.email || ngo.ngoDetails?.email || 'N/A'}
                         </div>
                         <div>
                           <span className="font-medium">Phone:</span> {ngo.phone}
