@@ -2,6 +2,7 @@ import { NavLink, Link, useLocation } from "react-router-dom";
 import { useState, useEffect, useContext } from "react";
 import config from "../Conf/cofig";
 import ShowContext from "../context/ShowContext";
+import ApiService from "../services/apiServices";
 function NavBar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false); // Initially set to false for mobile menu
@@ -52,12 +53,8 @@ function NavBar() {
   const logout= async ()=>{
     try {
       
-      const response=await  fetch(config.logout,{method:"POST",credentials: 'include'}).then((res)=>res.json())
-      .finally((res)=>console.log(res)
-      )
-      console.log("response at profile",response);
-      
-      if(response.statusCode===200){
+      const response=await ApiService.logoutUser();
+      if(response.status === 200){
         window.location.href="/"
       }
       // else{
